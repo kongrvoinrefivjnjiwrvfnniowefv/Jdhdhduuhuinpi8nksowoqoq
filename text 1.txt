@@ -1,0 +1,106 @@
+local Loader = {}
+Loader.__index = Loader
+
+function Loader.new(cfg)
+    local self = setmetatable({}, Loader)
+    self.cfg = cfg
+    local fluentOk, fluentLib = pcall(function()
+        return loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+    end)
+    if not fluentOk or not fluentLib then
+        warn("[Script Loader] Failed to load Fluent UI library!")
+        return self
+    end
+    self.libs = { Fluent = fluentLib }
+    self:_initUI()
+    return self
+end
+
+function Loader:_initUI()
+    if not self.libs.Fluent then
+        warn("[Script Loader] Fluent UI not available, cannot create window.")
+        return
+    end
+    local win = self.libs.Fluent:CreateWindow(self.cfg.Window)
+    if not win then
+        warn("[Script Loader] Failed to create Fluent window.")
+        return
+    end
+    self.window = win
+    self.tabs = {
+        Scripts = win:AddTab({ Title = "Scripts", Icon = "list" }),
+        Info = win:AddTab({ Title = "Info", Icon = "info" })
+    }
+    self:_addScriptButtons()
+    self:_addInfo()
+end
+
+function Loader:_addScriptButtons()
+    local scripts = self.cfg.Scripts
+    local sorted = {}
+    for i = 1, #scripts do
+        sorted[i] = scripts[i]
+    end
+    table.sort(sorted, function(a, b)
+        return a.Name:lower() < b.Name:lower()
+    end)
+    for i = 1, #sorted do
+        local script = sorted[i]
+        self.tabs.Scripts:AddButton({
+            Title = script.Name,
+            Description = "Click to load " .. script.Name,
+            Tooltip = script.Url,
+            Callback = function()
+                self:_loadScript(script.Url)
+            end
+        })
+    end
+end
+
+function Loader:_loadScript(url)
+    self.libs.Fluent:Notify({ Title = "Loading...", Content = url, Duration = 3 })
+    if self.window and self.window.Destroy then
+        self.window:Destroy()
+    end
+    if self.libs.Fluent and self.libs.Fluent.Unload then
+        self.libs.Fluent:Unload()
+    end
+    local ok, err = pcall(function()
+        loadstring(game:HttpGet(url))()
+    end)
+    if not ok then
+        warn("[Script Loader Error]", err)
+    end
+end
+
+function Loader:_addInfo()
+    self.tabs.Info:AddParagraph({
+        Title = "About",
+        Content = "Script Loader by NexaHub Select a script from the Scripts tab. Confirm before loading. Loader UI will close after loading."
+    })
+end
+
+local Config = {
+    Window = {
+        Title        = "NexaHub Loader",
+        SubTitle     = "Loader by Alan| Scripts by @Alan",
+        TabWidth     = 160,
+        Size         = UDim2.fromOffset(580, 460),
+        Acrylic      = true,
+        Theme        = "Dark",
+        Accent       = Color3.fromRGB(255, 105, 180),  -- Rosa
+        MinimizeKey  = Enum.KeyCode.LeftControl
+    },
+    Scripts = {
+        {
+            Name = "+1 Speed Evolve ",
+            Url  = "https://raw.githubusercontent.com/progamera373-ui/1-Speed-Evolve/refs/heads/main/Nexa%20Hub%20X"
+        },
+        {
+            Name = "+1 Speed Keyboard Escape",
+            Url  = "https://raw.githubusercontent.com/progamera373-ui/Speed-a-keyboard-Auto-farm-by-nexa-hub-by-alan-/refs/heads/main/Localr.lua"
+        },
+    },
+}
+
+Loader.new(Config)
